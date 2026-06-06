@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许与api.nlecloud.com进行明文通信 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">api.nlecloud.com</domain> <!-- 真实API地址 -->
+        <domain includeSubdomains="true">10.0.2.2</domain> <!-- 本地测试地址（Android模拟器） -->
+        <domain includeSubdomains="true">127.0.0.1</domain> <!-- 本地测试地址 -->
+        <domain includeSubdomains="true">localhost</domain> <!-- 本地测试地址 -->
+    </domain-config>
+    
+    <!-- 默认配置 -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
