@@ -1,14 +1,35 @@
+# Gradle 构建产物
+/build/
+/app/build/
+/.gradle/
+/gradle/
+
+# IDE 配置
+.idea/
+.vscode/
 *.iml
-.gradle
-/local.properties
-/.idea/
-/.vscode/
-/.trae/
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# 本地配置
 local.properties
 *.bak
+
+# 编译文件
 *.class
+*.apk
+*.aar
+*.dex
+*.jar
+
+# 临时文件
+*.log
+.DS_Store
+Thumbs.db
+
+# 后端构建
+backend/target/
+
+# 其他
+/target/
+/captures/
+.externalNativeBuild/
+.cxx/
