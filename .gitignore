@@ -1,8 +1,6 @@
 # Gradle 构建产物
-/build/
 /app/build/
-/.gradle/
-/gradle/
+/build/
 
 # IDE 配置
 .idea/
@@ -33,3 +31,7 @@ backend/target/
 /captures/
 .externalNativeBuild/
 .cxx/
+
+# Gradle 缓存（但保留 wrapper）
+.gradle/
+gradle/gradle-daemon-jvm.properties
