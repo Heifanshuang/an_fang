@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 主监控页面 -->
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_home"
+            android:icon="@android:drawable/ic_dialog_info"
+            android:title="首页" />
+        <item
+            android:id="@+id/nav_alarm_history"
+            android:icon="@android:drawable/ic_menu_recent_history"
+            android:title="告警历史" />
+        <item
+            android:id="@+id/nav_report"
+            android:icon="@android:drawable/ic_menu_agenda"
+            android:title="机房环境数据报表" />
+    </group>
+
+    <!-- 设备管理页面 -->
+    <item android:title="设备管理">
+        <menu>
+            <item
+                android:id="@+id/nav_actuators"
+                android:icon="@android:drawable/ic_menu_edit"
+                android:title="执行设备" />
+        </menu>
+    </item>
+
+    <!-- 退出登录 -->
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@android:drawable/ic_menu_close_clear_cancel"
+        android:title="退出登录" />
+
+</menu>

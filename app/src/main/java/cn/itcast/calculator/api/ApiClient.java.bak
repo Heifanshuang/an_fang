@@ -1,0 +1,736 @@
+package cn.itcast.calculator.api;
+
+import android.app.Application;
+
+import cn.itcast.calculator.api.model.DeviceControlResponse;
+import cn.itcast.calculator.api.model.DeviceDataResponse;
+import cn.itcast.calculator.api.model.HomeDataResponse;
+import cn.itcast.calculator.api.model.LoginResponse;
+import cn.itcast.calculator.api.model.ProjectListResponse;
+import cn.itcast.calculator.api.model.SensorListResponse;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import android.util.Log;
+
+import okhttp3.HttpUrl;
+import okhttp3.Interceptor;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * API瀹㈡埛绔被锛岀敤浜庨厤缃拰鍒涘缓Retrofit鏈嶅姟瀹炰緥
+ */
+public class ApiClient {
+    
+    private static final String TAG = "ApiClient";
+    private static final String BASE_URL = "http://api.nlecloud.com"; // 鑾峰彇API鏈嶅姟瀹炰緥
+    private static ApiService apiService;
+    private static String accessToken;
+    private static android.content.Context context;
+    private static final long CACHE_SIZE = 10 * 1024 * 1024; // 10MB缂撳瓨
+    private static final int MAX_IDLE_CONNECTIONS = 5; // 鏈€澶х┖闂茶繛鎺ユ暟
+    private static final long KEEP_ALIVE_DURATION = 60; // 杩炴帴淇濇寔鏃堕棿锛堢锛?    
+    /**
+     * 鍒濆鍖朅PI瀹㈡埛绔?     * @param ctx 搴旂敤涓婁笅鏂?     */
+    public static void init(android.content.Context ctx) {
+        context = ctx.getApplicationContext();
+        // 浠嶴haredPreferences鍔犺浇淇濆瓨鐨凙ccessToken
+        loadAccessTokenFromSharedPreferences();
+    }
+    
+    /**
+     * 璁剧疆涓婁笅鏂?     * @param ctx 搴旂敤涓婁笅鏂?     */
+    public static void setContext(android.content.Context ctx) {
+        context = ctx.getApplicationContext();
+    }
+    
+    /**
+     * 璁剧疆璁块棶浠ょ墝
+     * @param token 璁块棶浠ょ墝
+     */
+    public static void setAccessToken(String token) {
+        accessToken = token;
+        // 閲嶇疆apiService锛屼互渚夸娇鐢ㄦ柊鐨凙ccessToken
+        apiService = null;
+        // 淇濆瓨AccessToken鍒癝haredPreferences
+        saveAccessTokenToSharedPreferences(token);
+    }
+    
+    /**
+     * 鑾峰彇褰撳墠璁块棶浠ょ墝
+     * @return 璁块棶浠ょ墝
+     */
+    public static String getAccessToken() {
+        return accessToken;
+    }
+    
+    /**
+     * 浠嶴haredPreferences鍔犺浇AccessToken
+     */
+    private static void loadAccessTokenFromSharedPreferences() {
+        if (context != null) {
+            android.content.SharedPreferences sharedPreferences = context.getSharedPreferences("login_prefs", android.content.Context.MODE_PRIVATE);
+            accessToken = sharedPreferences.getString("access_token", null);
+            if (accessToken != null) {
+                System.out.println("浠嶴haredPreferences鍔犺浇AccessToken: " + accessToken);
+            }
+        }
+    }
+    
+    /**
+     * 淇濆瓨AccessToken鍒癝haredPreferences
+     * @param token 璁块棶浠ょ墝
+     */
+    private static void saveAccessTokenToSharedPreferences(String token) {
+        if (context != null) {
+            android.content.SharedPreferences sharedPreferences = context.getSharedPreferences("login_prefs", android.content.Context.MODE_PRIVATE);
+            android.content.SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString("access_token", token);
+            editor.apply();
+            System.out.println("淇濆瓨AccessToken鍒癝haredPreferences: " + token);
+        }
+    }
+    
+    /**
+     * 鑾峰彇API鏈嶅姟瀹炰緥
+     * @return API鏈嶅姟瀹炰緥
+     */
+    public static ApiService getApiService() {
+        // 濡傛灉context涓簄ull锛屽皾璇曚粠Application鑾峰彇
+        if (context == null) {
+            try {
+                // 灏濊瘯閫氳繃鍙嶅皠鑾峰彇Application涓婁笅鏂?                Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+                Method currentApplicationMethod = activityThreadClass.getDeclaredMethod("currentApplication");
+                Application application = (Application) currentApplicationMethod.invoke(null);
+                if (application != null) {
+                    context = application.getApplicationContext();
+                    System.out.println("閫氳繃鍙嶅皠鑾峰彇鍒癆pplication涓婁笅鏂?);
+                }
+            } catch (Exception e) {
+                System.err.println("鏃犳硶閫氳繃鍙嶅皠鑾峰彇Application涓婁笅鏂? " + e.getMessage());
+            }
+        }
+        
+        // 姣?鍒嗛挓鎵嶉噸鏂颁粠SharedPreferences鍔犺浇涓€娆ccessToken锛岄伩鍏嶉绻両O
+        if (System.currentTimeMillis() - lastTokenLoadTime > 5 * 60 * 1000) {
+            loadAccessTokenFromSharedPreferences();
+            lastTokenLoadTime = System.currentTimeMillis();
+        }
+        
+        // 鍙湁褰揳piService涓簄ull鎴朅ccessToken鍙戠敓鍙樺寲鏃讹紝鎵嶉噸鏂板垱寤篴piService瀹炰緥
+        if (apiService == null || !accessToken.equals(lastUsedAccessToken)) {
+            // 鍒涘缓鏃ュ織鎷︽埅鍣紝鐢熶骇鐜寤鸿璁剧疆涓篘ONE鎴朆ASIC
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
+            
+            // 鍒涘缓璁よ瘉鎷︽埅鍣?            Interceptor authInterceptor = chain -> {
+                Request originalRequest = chain.request();
+                Request.Builder requestBuilder = originalRequest.newBuilder();
+                
+                // 濡傛灉鏈堿ccessToken锛屾坊鍔犲埌璇锋眰澶?                if (accessToken != null && !accessToken.isEmpty()) {
+                    requestBuilder.header("AccessToken", accessToken);
+                }
+                
+                Request newRequest = requestBuilder.build();
+                return chain.proceed(newRequest);
+            };
+            
+            // 鍒涘缓OkHttpClient锛屼紭鍖栭厤缃?            OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)  // 鍑忓皯杩炴帴瓒呮椂鏃堕棿
+                    .readTimeout(15, TimeUnit.SECONDS)     // 鍑忓皯璇诲彇瓒呮椂鏃堕棿
+                    .writeTimeout(15, TimeUnit.SECONDS)    // 鍑忓皯鍐欏叆瓒呮椂鏃堕棿
+                    // 璁よ瘉鎷︽埅鍣細娣诲姞AccessToken鍒拌姹傚ご
+                    .addInterceptor(authInterceptor)
+                    // 浼樺寲杩炴帴姹?                    .connectionPool(new okhttp3.ConnectionPool(MAX_IDLE_CONNECTIONS, KEEP_ALIVE_DURATION, TimeUnit.SECONDS))
+                    // 鍑忓皯杩炴帴澶辫触閲嶈瘯娆℃暟
+                    .retryOnConnectionFailure(true)
+                    .retryOnConnectionFailure(false)
+                    // 绂佺敤gzip鍘嬬缉
+                    .addInterceptor(chain -> {
+                        Request request = chain.request().newBuilder()
+                                .header("Accept-Encoding", "identity") // 绂佺敤gzip鍘嬬缉
+                                .build();
+                        return chain.proceed(request);
+                    })
+                    // 鏃ュ織鎷︽埅鍣細璁板綍璇锋眰鍜屽搷搴旂殑鍩烘湰淇℃伅
+                    .addInterceptor(logging);
+            
+            // 娣诲姞缂撳瓨
+            if (context != null) {
+                try {
+                    // 鑾峰彇缂撳瓨鐩綍
+                    java.io.File cacheDir = new java.io.File(context.getCacheDir(), "http_cache");
+                    // 鍒涘缓缂撳瓨
+                    okhttp3.Cache cache = new okhttp3.Cache(cacheDir, CACHE_SIZE);
+                    clientBuilder.cache(cache);
+                } catch (Exception e) {
+                    System.err.println("鍒涘缓HTTP缂撳瓨澶辫触: " + e.getMessage());
+                }
+            }
+            
+            OkHttpClient client = clientBuilder.build();
+            
+            // 鍒涘缓Gson瀹炰緥
+            Gson gson = new GsonBuilder()
+                    .setDateFormat("yyyy-MM-dd HH:mm:ss")
+                    .create();
+            
+            // 鍒涘缓Retrofit瀹炰緥
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .client(client)
+                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .build();
+            
+            // 鍒涘缓API鏈嶅姟
+            apiService = retrofit.create(ApiService.class);
+            lastUsedAccessToken = accessToken;
+        }
+        return apiService;
+    }
+    
+    // 璁板綍涓婃鍔犺浇AccessToken鐨勬椂闂?    private static long lastTokenLoadTime = 0;
+    // 璁板綍涓婃浣跨敤鐨凙ccessToken
+    private static String lastUsedAccessToken = "";
+    
+    /**
+     * 鐧诲綍璇锋眰鍥炶皟
+     */
+    public interface LoginCallback {
+        void onSuccess(LoginResponse response);
+        void onFailure(String error);
+    }
+    
+    /**
+     * 璁惧鏁版嵁璇锋眰鍥炶皟
+     */
+    public interface DeviceDataCallback {
+        void onSuccess(DeviceDataResponse response);
+        void onFailure(String error);
+    }
+    
+    /**
+     * 椤圭洰鍒楄〃璇锋眰鍥炶皟
+     */
+    public interface ProjectListCallback {
+        void onSuccess(ProjectListResponse response);
+        void onFailure(String error);
+    }
+    
+    /**
+     * 浼犳劅鍣ㄥ垪琛ㄨ姹傚洖璋?     */
+    public interface SensorListCallback {
+        void onSuccess(SensorListResponse response);
+        void onFailure(String error);
+    }
+    
+    /**
+     * 绛栫暐鎵ц璁板綍璇锋眰鍥炶皟
+     */
+    public interface StrategyRecordCallback {
+        void onSuccess(com.example.myapplication.api.model.StrategyRecordResponse response);
+        void onFailure(String error);
+    }
+    
+    /**
+     * 鎵ц鐧诲綍璇锋眰
+     * @param account 鎵嬫満鍙?     * @param password 瀵嗙爜
+     * @param isRememberMe 鏄惁璁颁綇鎴?     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void login(String account, String password, boolean isRememberMe, LoginCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        System.out.println("=== 寮€濮嬫墽琛岀櫥褰曡姹?===");
+        System.out.println("璇锋眰URL: " + BASE_URL + "/Users/Login");
+        System.out.println("璇锋眰鏂规硶: POST");
+        System.out.println("璇锋眰鍙傛暟 - Account: " + account + ", IsRememberMe: " + isRememberMe);
+        
+        // 鍒涘缓鐧诲綍璇锋眰
+        com.example.myapplication.api.model.LoginRequest request = 
+                new com.example.myapplication.api.model.LoginRequest(account, password, isRememberMe);
+        
+        // 鎵ц璇锋眰
+        Call<LoginResponse> call = getApiService().login(request);
+        call.enqueue(new Callback<LoginResponse>() {
+            @Override
+            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                System.out.println("=== 鐧诲綍璇锋眰鍝嶅簲 ===");
+                System.out.println("鍝嶅簲鐘舵€佺爜: " + response.code());
+                System.out.println("鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                System.out.println("鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    System.out.println("鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    if (response.body().getResultObj() != null) {
+                        System.out.println("鍝嶅簲缁撴灉 - UserID: " + response.body().getResultObj().getUserId() + ", AccessToken: " + response.body().getResultObj().getAccessToken());
+                    }
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "鐧诲綍澶辫触锛? + response.message();
+                    System.out.println("鐧诲綍澶辫触: " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<LoginResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                System.out.println("鐧诲綍缃戠粶閿欒: " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 鑾峰彇璁惧鏁版嵁
+     * @param devIds 璁惧ID鍒楄〃锛岀敤閫楀彿鍒嗛殧
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getDeviceData(String devIds, DeviceDataCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        System.out.println("=== 寮€濮嬫墽琛岃幏鍙栬澶囨暟鎹姹?===");
+        System.out.println("璇锋眰URL: " + BASE_URL + "/Devices/Datas");
+        System.out.println("璇锋眰鏂规硶: GET");
+        System.out.println("璇锋眰鍙傛暟 - devIds: " + devIds);
+        
+        // 鎵ц璇锋眰
+        Call<DeviceDataResponse> call = getApiService().getDeviceData(devIds);
+        call.enqueue(new Callback<DeviceDataResponse>() {
+            @Override
+            public void onResponse(Call<DeviceDataResponse> call, Response<DeviceDataResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                System.out.println("=== 鑾峰彇璁惧鏁版嵁鍝嶅簲 ===");
+                System.out.println("鍝嶅簲鐘舵€佺爜: " + response.code());
+                System.out.println("鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                System.out.println("鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    System.out.println("鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    if (response.body().getResultObj() != null) {
+                        System.out.println("鍝嶅簲缁撴灉 - 璁惧鏁伴噺: " + response.body().getResultObj().size());
+                        // 鎵撳嵃姣忎釜璁惧鐨勬暟鎹?                        for (int i = 0; i < response.body().getResultObj().size(); i++) {
+                            com.example.myapplication.model.DeviceData device = response.body().getResultObj().get(i);
+                            System.out.println("璁惧 " + (i+1) + " - DeviceID: " + device.getDeviceID() + ", Name: " + device.getName());
+                            // 鎵撳嵃浼犳劅鍣ㄦ暟鎹?                            if (device.getDatas() != null) {
+                                for (com.example.myapplication.model.DeviceData.SensorData sensor : device.getDatas()) {
+                                    System.out.println("  浼犳劅鍣?- ApiTag: " + sensor.getApiTag() + ", Value: " + sensor.getValue() + ", RecordTime: " + sensor.getRecordTime());
+                                }
+                            }
+                        }
+                    }
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "鑾峰彇璁惧鏁版嵁澶辫触锛? + response.message();
+                    System.out.println("鑾峰彇璁惧鏁版嵁澶辫触: " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<DeviceDataResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                System.out.println("鑾峰彇璁惧鏁版嵁缃戠粶閿欒: " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 鑾峰彇椤圭洰鍒楄〃
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getProjects(ProjectListCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        System.out.println("=== 寮€濮嬫墽琛岃幏鍙栭」鐩垪琛ㄨ姹?===");
+        System.out.println("璇锋眰URL: " + BASE_URL + "/Projects");
+        System.out.println("璇锋眰鏂规硶: GET");
+        
+        // 鎵ц璇锋眰
+        Call<ProjectListResponse> call = getApiService().getProjects();
+        call.enqueue(new Callback<ProjectListResponse>() {
+            @Override
+            public void onResponse(Call<ProjectListResponse> call, Response<ProjectListResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                System.out.println("=== 鑾峰彇椤圭洰鍒楄〃鍝嶅簲 ===");
+                System.out.println("鍝嶅簲鐘舵€佺爜: " + response.code());
+                System.out.println("鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                System.out.println("鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    System.out.println("鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    if (response.body().getResultObj() != null) {
+                        System.out.println("鍝嶅簲缁撴灉 - 椤圭洰鏁伴噺: " + response.body().getResultObj().getPageSet().size() + ", 鎬昏褰曟暟: " + response.body().getResultObj().getRecordCount());
+                        // 鎵撳嵃姣忎釜椤圭洰鐨勬暟鎹?                        for (int i = 0; i < response.body().getResultObj().getPageSet().size(); i++) {
+                            com.example.myapplication.api.model.Project project = response.body().getResultObj().getPageSet().get(i);
+                            System.out.println("椤圭洰 " + (i+1) + " - ProjectID: " + project.getProjectId() + ", Name: " + project.getName() + ", Industry: " + project.getIndustry());
+                        }
+                    }
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "鑾峰彇椤圭洰鍒楄〃澶辫触锛? + response.message();
+                    System.out.println("鑾峰彇椤圭洰鍒楄〃澶辫触: " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ProjectListResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                System.out.println("鑾峰彇椤圭洰鍒楄〃缃戠粶閿欒: " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 鑾峰彇椤圭洰涓嬬殑浼犳劅鍣ㄥ垪琛?     * @param projectId 椤圭洰ID
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getProjectSensors(long projectId, SensorListCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        System.out.println("=== 寮€濮嬫墽琛岃幏鍙栭」鐩紶鎰熷櫒鍒楄〃璇锋眰 ===");
+        System.out.println("璇锋眰URL: " + BASE_URL + "/Projects/" + projectId + "/Sensors");
+        System.out.println("璇锋眰鏂规硶: GET");
+        System.out.println("璇锋眰鍙傛暟 - projectId: " + projectId);
+        
+        // 鎵ц璇锋眰
+        Call<SensorListResponse> call = getApiService().getProjectSensors(projectId);
+        call.enqueue(new Callback<SensorListResponse>() {
+            @Override
+            public void onResponse(Call<SensorListResponse> call, Response<SensorListResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                System.out.println("=== 鑾峰彇椤圭洰浼犳劅鍣ㄥ垪琛ㄥ搷搴?===");
+                System.out.println("鍝嶅簲鐘舵€佺爜: " + response.code());
+                System.out.println("鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                System.out.println("鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    System.out.println("鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    System.out.println("鍝嶅簲缁撴灉 - 浼犳劅鍣ㄦ暟閲? " + response.body().getResultObj().size());
+                    // 鎵撳嵃姣忎釜浼犳劅鍣ㄧ殑鏁版嵁
+                    for (int i = 0; i < response.body().getResultObj().size(); i++) {
+                        com.example.myapplication.api.model.Sensor sensor = response.body().getResultObj().get(i);
+                        System.out.println("浼犳劅鍣?" + (i+1) + " - DeviceID: " + sensor.getDeviceId() + ", ApiTag: " + sensor.getApiTag() + ", Name: " + sensor.getName() + ", SensorType: " + sensor.getSensorType());
+                    }
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "鑾峰彇椤圭洰浼犳劅鍣ㄥけ璐ワ細" + response.message();
+                    System.out.println("鑾峰彇椤圭洰浼犳劅鍣ㄥけ璐? " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<SensorListResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                System.out.println("鑾峰彇椤圭洰浼犳劅鍣ㄧ綉缁滈敊璇? " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 妯＄硦鏌ヨ璁惧鍒楄〃
+     * @param keyword 鍏抽敭瀛楋紝鍙负绌?     * @param pageIndex 椤电爜锛屼粠1寮€濮?     * @param pageSize 姣忛〉鏉℃暟
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getDevices(String keyword, int pageIndex, int pageSize, DeviceDataCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        System.out.println("=== 寮€濮嬫墽琛屾ā绯婃煡璇㈣澶囧垪琛ㄨ姹?===");
+        System.out.println("璇锋眰URL: " + BASE_URL + "/Devices");
+        System.out.println("璇锋眰鏂规硶: GET");
+        
+        // 鏋勫缓鏌ヨ鍙傛暟
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        if (keyword != null && !keyword.isEmpty()) {
+            params.put("keyword", keyword);
+        }
+        params.put("pageIndex", String.valueOf(pageIndex));
+        params.put("pageSize", String.valueOf(pageSize));
+        
+        System.out.println("璇锋眰鍙傛暟: " + params);
+        
+        // 鎵ц璇锋眰
+        Call<DeviceDataResponse> call = getApiService().getDevices(params);
+        call.enqueue(new Callback<DeviceDataResponse>() {
+            @Override
+            public void onResponse(Call<DeviceDataResponse> call, Response<DeviceDataResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                System.out.println("=== 妯＄硦鏌ヨ璁惧鍒楄〃鍝嶅簲 ===");
+                System.out.println("鍝嶅簲鐘舵€佺爜: " + response.code());
+                System.out.println("鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                System.out.println("鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    System.out.println("鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    if (response.body().getResultObj() != null) {
+                        System.out.println("鍝嶅簲缁撴灉 - 璁惧鏁伴噺: " + response.body().getResultObj().size());
+                        // 鎵撳嵃姣忎釜璁惧鐨勬暟鎹?                        for (int i = 0; i < response.body().getResultObj().size(); i++) {
+                            com.example.myapplication.model.DeviceData device = response.body().getResultObj().get(i);
+                            System.out.println("璁惧 " + (i+1) + " - DeviceID: " + device.getDeviceID() + ", Name: " + device.getName() + ", IsOnline: " + device.isOnline());
+                        }
+                    }
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "妯＄硦鏌ヨ璁惧澶辫触锛? + response.message();
+                    System.out.println("妯＄硦鏌ヨ璁惧澶辫触: " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<DeviceDataResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                System.out.println("妯＄硦鏌ヨ璁惧缃戠粶閿欒: " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 閲嶈浇鏂规硶锛氱畝鍖栬皟鐢紝榛樿鍙傛暟
+     */
+    public static void getDevices(String keyword, DeviceDataCallback callback) {
+        getDevices(keyword, 1, 20, callback);
+    }
+    
+    /**
+     * 鑾峰彇椤圭洰涓嬫墍鏈夎澶囩殑浼犳劅鍣ㄥ疄鏃舵暟鎹?     * @param projectId 椤圭洰ID
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getProjectSensorsRealTimeData(long projectId, SensorListCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        Log.d("ApiClient", "=== 寮€濮嬫墽琛岃幏鍙栭」鐩紶鎰熷櫒瀹炴椂鏁版嵁璇锋眰 ===");
+        Log.d("ApiClient", "璇锋眰URL: " + BASE_URL + "/Projects/" + projectId + "/SensorsRealTimeData");
+        Log.d("ApiClient", "璇锋眰鏂规硶: GET");
+        Log.d("ApiClient", "璇锋眰鍙傛暟 - projectId: " + projectId);
+        
+        // 鎵ц璇锋眰
+        Call<SensorListResponse> call = getApiService().getProjectSensorsRealTimeData(projectId);
+        call.enqueue(new Callback<SensorListResponse>() {
+            @Override
+            public void onResponse(Call<SensorListResponse> call, Response<SensorListResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                Log.d("ApiClient", "=== 鑾峰彇椤圭洰浼犳劅鍣ㄥ疄鏃舵暟鎹搷搴?===");
+                Log.d("ApiClient", "鍝嶅簲鐘舵€佺爜: " + response.code());
+                Log.d("ApiClient", "鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                Log.d("ApiClient", "鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    Log.d("ApiClient", "鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    Log.d("ApiClient", "鍝嶅簲缁撴灉 - 浼犳劅鍣ㄦ暟閲? " + response.body().getResultObj().size());
+                    // 鎵撳嵃姣忎釜浼犳劅鍣ㄧ殑鏁版嵁锛岀壒鍒叧娉ㄦ俯婀垮害浼犳劅鍣?                    for (int i = 0; i < response.body().getResultObj().size(); i++) {
+                        com.example.myapplication.api.model.Sensor sensor = response.body().getResultObj().get(i);
+                        String sensorInfo = "浼犳劅鍣?" + (i+1) + " - DeviceID: " + sensor.getDeviceId() + ", ApiTag: " + sensor.getApiTag() + ", Name: " + sensor.getName() + ", Value: " + sensor.getValue() + ", RecordTime: " + sensor.getRecordTime();
+                        Log.d("ApiClient", sensorInfo);
+                        
+                        // 鐗瑰埆鏍囪娓╂箍搴︿紶鎰熷櫒
+                        String apiTag = sensor.getApiTag().toLowerCase();
+                        String name = sensor.getName() != null ? sensor.getName().toLowerCase() : "";
+                        if (apiTag.contains("wendu") || apiTag.contains("temp") || name.contains("娓╁害") || apiTag.contains("shidu") || apiTag.contains("humidity") || name.contains("婀垮害")) {
+                            Log.d("ApiClient", "*** 娓╂箍搴︿紶鎰熷櫒 *** " + sensorInfo);
+                        }
+                    }
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "鑾峰彇椤圭洰浼犳劅鍣ㄥ疄鏃舵暟鎹け璐ワ細" + response.message();
+                    Log.e("ApiClient", "鑾峰彇椤圭洰浼犳劅鍣ㄥ疄鏃舵暟鎹け璐? " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<SensorListResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                Log.e("ApiClient", "鑾峰彇椤圭洰浼犳劅鍣ㄥ疄鏃舵暟鎹綉缁滈敊璇? " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 鏌ヨ绛栫暐鎵ц璁板綍
+     * @param projectId 椤圭洰ID锛堝繀椤伙級
+     * @param deviceId 璁惧ID锛堝彲閫夛級
+     * @param strategyId 绛栫暐ID锛堝彲閫夛級
+     * @param pageSize 鎸囧畾姣忛〉瑕佹樉绀虹殑鏁版嵁涓暟锛岄粯璁?0锛屾渶澶?00
+     * @param startDate 璧峰鏃堕棿锛堝彲閫夛紝鍖呮嫭褰撳ぉ锛屾牸寮廦YYY-MM-DD锛?     * @param endDate 缁撴潫鏃堕棿锛堝彲閫夛紝鍖呮嫭褰撳ぉ锛屾牸寮廦YYY-MM-DD锛?     * @param pageIndex 鎸囧畾椤电爜
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getStrategyRecords(long projectId, Long deviceId, Long strategyId, Integer pageSize, String startDate, String endDate, Integer pageIndex, StrategyRecordCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        Log.d(TAG, "=== 寮€濮嬫墽琛屾煡璇㈢瓥鐣ユ墽琛岃褰曡姹?===");
+        Log.d(TAG, "璇锋眰URL: " + BASE_URL + "/Strategys/Records");
+        Log.d(TAG, "璇锋眰鏂规硶: GET");
+        
+        // 鏋勫缓鏌ヨ鍙傛暟
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        params.put("projectId", String.valueOf(projectId));
+        
+        if (deviceId != null) {
+            params.put("deviceId", String.valueOf(deviceId));
+        }
+        
+        if (strategyId != null) {
+            params.put("StrategyID", String.valueOf(strategyId));
+        }
+        
+        if (pageSize != null) {
+            params.put("PageSize", String.valueOf(pageSize));
+        }
+        
+        if (startDate != null && !startDate.isEmpty()) {
+            params.put("StartDate", startDate);
+        }
+        
+        if (endDate != null && !endDate.isEmpty()) {
+            params.put("EndDate", endDate);
+        }
+        
+        if (pageIndex != null) {
+            params.put("PageIndex", String.valueOf(pageIndex));
+        }
+        
+        Log.d(TAG, "璇锋眰鍙傛暟: " + params);
+        
+        // 鎵ц璇锋眰
+        Call<com.example.myapplication.api.model.StrategyRecordResponse> call = getApiService().getStrategyRecords(params);
+        call.enqueue(new Callback<com.example.myapplication.api.model.StrategyRecordResponse>() {
+            @Override
+            public void onResponse(Call<com.example.myapplication.api.model.StrategyRecordResponse> call, Response<com.example.myapplication.api.model.StrategyRecordResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                Log.d(TAG, "=== 鏌ヨ绛栫暐鎵ц璁板綍鍝嶅簲 ===");
+                Log.d(TAG, "鍝嶅簲鐘舵€佺爜: " + response.code());
+                Log.d(TAG, "鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                Log.d(TAG, "鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    Log.d(TAG, "鍝嶅簲鍐呭 - Status: " + response.body().getStatus() + ", StatusCode: " + response.body().getStatusCode() + ", Msg: " + response.body().getMsg());
+                    
+                    if (response.body().getResultObj() != null) {
+                        Log.d(TAG, "鍝嶅簲缁撴灉 - 绛栫暐鎵ц璁板綍鏁伴噺: " + response.body().getResultObj().getPageSet().size() + ", 鎬昏褰曟暟: " + response.body().getResultObj().getRecordCount());
+                        // 鎵撳嵃姣忔潯绛栫暐鎵ц璁板綍
+                        for (int i = 0; i < response.body().getResultObj().getPageSet().size(); i++) {
+                            com.example.myapplication.api.model.StrategyRecordResponse.StrategyRecord record = response.body().getResultObj().getPageSet().get(i);
+                            Log.d(TAG, "绛栫暐鎵ц璁板綍 " + (i+1) + " - RecordID: " + record.getRecordId() + ", StrategyId: " + record.getStrategyId() + ", CreateDate: " + record.getCreateDate() + ", Action: " + record.getAction() + ", ConditionCn: " + record.getConditionCn());
+                        }
+                    }
+                    
+                    callback.onSuccess(response.body());
+                } else {
+                    String errorMsg = "鏌ヨ绛栫暐鎵ц璁板綍澶辫触锛? + response.message();
+                    Log.e(TAG, "鏌ヨ绛栫暐鎵ц璁板綍澶辫触: " + errorMsg);
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<com.example.myapplication.api.model.StrategyRecordResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                Log.e(TAG, "鏌ヨ绛栫暐鎵ц璁板綍缃戠粶閿欒: " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+    
+    /**
+     * 閲嶈浇鏂规硶锛氱畝鍖栬皟鐢紝浣跨敤榛樿鍙傛暟
+     * @param projectId 椤圭洰ID锛堝繀椤伙級
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void getStrategyRecords(long projectId, StrategyRecordCallback callback) {
+        getStrategyRecords(projectId, null, null, 20, null, null, 1, callback);
+    }
+    
+    /**
+     * 鎺у埗璁惧
+     * @param deviceId 璁惧ID
+     * @param apiTag 鍛戒护鏍囩
+     * @param value 鎺у埗鍊硷紝1鎴?
+     * @param callback 鍥炶皟鎺ュ彛
+     */
+    public static void controlDevice(String deviceId, String apiTag, String value, DeviceDataCallback callback) {
+        // 鎵撳嵃璇锋眰淇℃伅
+        System.out.println("=== 寮€濮嬫墽琛屾帶鍒惰澶囪姹?===");
+        System.out.println("璇锋眰URL: " + BASE_URL + "/Cmds");
+        System.out.println("璇锋眰鏂规硶: POST");
+        System.out.println("璇锋眰鍙傛暟 - deviceId: " + deviceId + ", apiTag: " + apiTag);
+        System.out.println("璇锋眰浣? " + value);
+        
+        // 灏嗗瓧绗︿覆杞崲涓烘暣鏁帮紝纭繚璇锋眰浣撳彂閫佺函鏁板瓧鑰屼笉鏄甫寮曞彿鐨勫瓧绗︿覆
+        // 杩欐槸瑙ｅ喅璁惧鍙兘寮€鍚笉鑳藉叧闂殑鍏抽敭
+        int command = Integer.parseInt(value);
+        
+        // 浣跨敤Retrofit鍙戦€佽姹?        Call<DeviceControlResponse> call = getApiService().controlDevice(deviceId, apiTag, command);
+        call.enqueue(new Callback<DeviceControlResponse>() {
+            @Override
+            public void onResponse(Call<DeviceControlResponse> call, Response<DeviceControlResponse> response) {
+                // 鎵撳嵃鍝嶅簲淇℃伅
+                System.out.println("=== 鎺у埗璁惧鍝嶅簲 ===");
+                System.out.println("鍝嶅簲鐘舵€佺爜: " + response.code());
+                System.out.println("鍝嶅簲鐘舵€佹秷鎭? " + response.message());
+                System.out.println("鍝嶅簲鏄惁鎴愬姛: " + response.isSuccessful());
+                
+                try {
+                    String responseBody = "";
+                    if (response.body() != null) {
+                        responseBody = new Gson().toJson(response.body());
+                    } else if (response.errorBody() != null) {
+                        responseBody = response.errorBody().string();
+                    }
+                    System.out.println("鍝嶅簲鍐呭: " + responseBody);
+                    
+                    if (response.isSuccessful() && response.body() != null) {
+                        System.out.println("鎺у埗璁惧鎴愬姛锛屽懡浠D: " + response.body().getResultObj() + ", 鍝嶅簲鐘舵€? " + response.body().getStatus());
+                        
+                        // 鍒涘缓涓€涓狣eviceDataResponse瀵硅薄杩斿洖锛屼繚鎸佹帴鍙ｅ吋瀹规€?                        DeviceDataResponse deviceResponse = new DeviceDataResponse();
+                        deviceResponse.setStatus(response.body().getStatus());
+                        deviceResponse.setStatusCode(response.body().getStatusCode());
+                        deviceResponse.setMsg(response.body().getMsg());
+                        callback.onSuccess(deviceResponse);
+                    } else {
+                        String errorMsg = "鎺у埗璁惧澶辫触锛? + response.message();
+                        if (!responseBody.isEmpty()) {
+                            errorMsg += "锛屽搷搴斿唴瀹癸細" + responseBody;
+                        }
+                        System.out.println("鎺у埗璁惧澶辫触: " + errorMsg);
+                        callback.onFailure(errorMsg);
+                    }
+                } catch (IOException e) {
+                    String errorMsg = "璇诲彇鍝嶅簲澶辫触锛? + e.getMessage();
+                    System.out.println("璇诲彇鍝嶅簲澶辫触: " + errorMsg);
+                    e.printStackTrace();
+                    callback.onFailure(errorMsg);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<DeviceControlResponse> call, Throwable t) {
+                String errorMsg = "缃戠粶閿欒锛? + t.getMessage();
+                System.out.println("鎺у埗璁惧缃戠粶閿欒: " + errorMsg);
+                t.printStackTrace();
+                callback.onFailure(errorMsg);
+            }
+        });
+    }
+}

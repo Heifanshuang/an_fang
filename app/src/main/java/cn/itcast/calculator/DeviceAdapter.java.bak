@@ -1,0 +1,203 @@
+package cn.itcast.calculator;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+import cn.itcast.calculator.model.DeviceData;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 浼犳劅鍣ㄦ暟鎹€傞厤鍣紝鐢ㄤ簬鏄剧ず浼犳劅鍣ㄥ崱鐗? */
+public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.SensorViewHolder> {
+
+    private List<DeviceData.SensorData> sensorList;
+
+    public DeviceAdapter(List<DeviceData> deviceList) {
+        // 浠庤澶囧垪琛ㄤ腑鎻愬彇鎵€鏈変紶鎰熷櫒鏁版嵁
+        sensorList = new ArrayList<>();
+        extractSensorsFromDevices(deviceList);
+    }
+
+    /**
+     * 浠庤澶囧垪琛ㄤ腑鎻愬彇鎵€鏈変紶鎰熷櫒鏁版嵁
+     */
+    private void extractSensorsFromDevices(List<DeviceData> deviceList) {
+        sensorList.clear();
+        if (deviceList != null) {
+            for (DeviceData device : deviceList) {
+                if (device.getDatas() != null && !device.getDatas().isEmpty()) {
+                    sensorList.addAll(device.getDatas());
+                }
+            }
+        }
+    }
+
+    @NonNull
+    @Override
+    public SensorViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // 鍔犺浇浼犳劅鍣ㄥ崱鐗囧竷灞€
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_sensor_card, parent, false);
+        return new SensorViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull SensorViewHolder holder, int position) {
+        // 鑾峰彇褰撳墠浼犳劅鍣ㄦ暟鎹?        DeviceData.SensorData sensor = sensorList.get(position);
+        
+        // 鏍规嵁apiTag鑾峰彇浼犳劅鍣ㄤ腑鏂囧悕绉帮紙鑷姩璇嗗埆锛?        String sensorName = getSensorName(sensor.getApiTag());
+        holder.tvSensorName.setText(sensorName);
+        
+        // 璁剧疆浼犳劅鍣ㄦ暟鍊硷紝灏哋bject杞崲涓篠tring
+        holder.tvSensorValue.setText(String.valueOf(sensor.getValue()));
+        
+        // 娣诲姞鍗曚綅
+        String unit = getSensorUnit(sensor.getApiTag());
+        holder.tvSensorUnit.setText(unit);
+        
+        // 璁剧疆璁板綍鏃堕棿
+        if (sensor.getRecordTime() != null) {
+            holder.tvRecordTime.setText(sensor.getRecordTime());
+        } else {
+            holder.tvRecordTime.setText("");
+        }
+        
+        // 鏍规嵁鍛婅鐘舵€佽缃笉鍚岀殑鑳屾櫙棰滆壊
+        int alarmStatus = sensor.getAlarmStatus();
+        int bgColor = holder.itemView.getContext().getResources().getColor(android.R.color.holo_green_light); // 榛樿缁胯壊锛堟甯革級
+        
+        switch (alarmStatus) {
+            case 1: // 璀﹀憡
+                bgColor = holder.itemView.getContext().getResources().getColor(android.R.color.holo_orange_light);
+                break;
+            case 2: // 绱ф€ュ憡璀?                bgColor = holder.itemView.getContext().getResources().getColor(android.R.color.holo_red_light);
+                break;
+            default: // 姝ｅ父
+                bgColor = holder.itemView.getContext().getResources().getColor(android.R.color.holo_green_light);
+                break;
+        }
+        
+        // 璁剧疆鍗＄墖鑳屾櫙棰滆壊
+        holder.itemView.setBackgroundColor(bgColor);
+        
+        // 濡傛灉鏈夊憡璀︽秷鎭紝鏄剧ず鍦ㄤ紶鎰熷櫒鍚嶇О涓嬫柟
+        if (sensor.getAlarmMsg() != null && !sensor.getAlarmMsg().isEmpty()) {
+            // 鍙互鍦ㄨ繖閲屾坊鍔犲憡璀︽秷鎭殑鏄剧ず閫昏緫
+            System.out.println("鍛婅: " + sensor.getAlarmMsg());
+        }
+    }
+
+    @Override
+    public int getItemCount() {
+        return sensorList != null ? sensorList.size() : 0;
+    }
+
+    /**
+     * 鏍规嵁apiTag鑾峰彇浼犳劅鍣ㄤ腑鏂囧悕绉帮紙鑷姩璇嗗埆锛?     */
+    private String getSensorName(String apiTag) {
+        if (apiTag == null || apiTag.isEmpty()) {
+            return "鏈煡浼犳劅鍣?;
+        }
+        
+        // 鑷姩璇嗗埆浼犳劅鍣ㄥ悕绉帮紝鏀寔鏇村绫诲瀷
+        switch (apiTag.toLowerCase()) {
+            case "temperature":
+                return "娓╁害";
+            case "humidity":
+                return "婀垮害";
+            case "light":
+                return "鍏夌収";
+            case "pressure":
+                return "姘斿帇";
+            case "co2":
+                return "浜屾哀鍖栫⒊";
+            case "pm25":
+                return "PM2.5";
+            case "pm10":
+                return "PM10";
+            case "voc":
+                return "鎸ュ彂鎬ф湁鏈虹墿";
+            case "noise":
+                return "鍣煶";
+            case "wind_speed":
+                return "椋庨€?;
+            case "wind_direction":
+                return "椋庡悜";
+            case "rainfall":
+                return "闄嶉洦閲?;
+            case "battery":
+                return "鐢垫睜鐢甸噺";
+            default:
+                // 濡傛灉鏃犳硶璇嗗埆锛岃繑鍥炲師濮媋piTag锛岀‘淇濊兘澶熸樉绀烘墍鏈変紶鎰熷櫒
+                return apiTag;
+        }
+    }
+
+    /**
+     * 鏍规嵁apiTag鑾峰彇浼犳劅鍣ㄥ崟浣?     */
+    private String getSensorUnit(String apiTag) {
+        if (apiTag == null || apiTag.isEmpty()) {
+            return "";
+        }
+        
+        switch (apiTag.toLowerCase()) {
+            case "temperature":
+                return "掳C";
+            case "humidity":
+                return "%";
+            case "light":
+                return "lx";
+            case "pressure":
+                return "kPa";
+            case "co2":
+                return "ppm";
+            case "pm25":
+            case "pm10":
+                return "渭g/m鲁";
+            case "voc":
+                return "mg/m鲁";
+            case "noise":
+                return "dB";
+            case "wind_speed":
+                return "m/s";
+            case "rainfall":
+                return "mm";
+            case "battery":
+                return "%";
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * 鏇存柊鏁版嵁闆?     */
+    public void updateData(List<DeviceData> newDeviceList) {
+        // 閲嶆柊鎻愬彇浼犳劅鍣ㄦ暟鎹?        extractSensorsFromDevices(newDeviceList);
+        notifyDataSetChanged();
+    }
+
+    /**
+     * 浼犳劅鍣╒iewHolder
+     */
+    static class SensorViewHolder extends RecyclerView.ViewHolder {
+        TextView tvSensorName;
+        TextView tvSensorValue;
+        TextView tvSensorUnit;
+        TextView tvRecordTime;
+
+        public SensorViewHolder(@NonNull View itemView) {
+            super(itemView);
+            tvSensorName = itemView.findViewById(R.id.tv_sensor_name);
+            tvSensorValue = itemView.findViewById(R.id.tv_sensor_value);
+            tvSensorUnit = itemView.findViewById(R.id.tv_sensor_unit);
+            tvRecordTime = itemView.findViewById(R.id.tv_record_time);
+        }
+    }
+}

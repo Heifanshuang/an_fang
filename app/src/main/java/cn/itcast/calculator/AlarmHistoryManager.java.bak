@@ -1,0 +1,455 @@
+package cn.itcast.calculator;
+
+import android.content.Context;
+import android.util.Log;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 鍛婅鍘嗗彶鏁版嵁绠＄悊鍣紝鐢ㄤ簬鍦ㄥ涓狥ragment涔嬮棿鍏变韩鍛婅鍘嗗彶鏁版嵁
+ * 瀹炵幇鍗曚緥妯″紡锛岀‘淇濇墍鏈塅ragment浣跨敤鐩稿悓鐨勬暟鎹簮
+ * 鎵╁睍鍔熻兘锛氱幆澧冩暟鎹鐞嗗拰鏁版嵁涓€鑷存€ф牎楠? */
+public class AlarmHistoryManager {
+    
+    private static final String TAG = "AlarmHistoryManager";
+    private static final String ALARM_HISTORY_FILE = "alarm_history.json";
+    private static final String ENVIRONMENT_DATA_FILE = "environment_data.json";
+    private static final int MAX_RECORDS = 100; // 鏈€澶т繚瀛樿褰曟暟
+    private static final long SAVE_DELAY = 1000; // 寤惰繜淇濆瓨鏃堕棿锛岄伩鍏嶉绻両O鎿嶄綔
+    
+    private static AlarmHistoryManager instance;
+    private List<com.example.myapplication.api.model.AlarmHistory> alarmList;
+    private Map<String, com.example.myapplication.api.model.Sensor> environmentDataMap; // 鐜鏁版嵁缂撳瓨
+    private Gson gson;
+    private Context context;
+    private OnAlarmAddedListener onAlarmAddedListener; // 鍛婅娣诲姞鐩戝惉鍣?    private OnEnvironmentDataUpdateListener onEnvironmentDataUpdateListener; // 鐜鏁版嵁鏇存柊鐩戝惉鍣?    private android.os.Handler saveHandler; // 鐢ㄤ簬寤惰繜淇濆瓨鐨凥andler
+    private Runnable alarmSaveRunnable; // 鍛婅鏁版嵁淇濆瓨浠诲姟
+    private Runnable environmentSaveRunnable; // 鐜鏁版嵁淇濆瓨浠诲姟
+    private boolean isAlarmSavePending = false; // 鍛婅鏁版嵁淇濆瓨鏄惁寰呭鐞?    private boolean isEnvironmentSavePending = false; // 鐜鏁版嵁淇濆瓨鏄惁寰呭鐞?    
+    /**
+     * 鍛婅娣诲姞鐩戝惉鍣ㄦ帴鍙?     */
+    public interface OnAlarmAddedListener {
+        void onAlarmAdded(List<com.example.myapplication.api.model.AlarmHistory> newAlarms);
+    }
+    
+    /**
+     * 鐜鏁版嵁鏇存柊鐩戝惉鍣ㄦ帴鍙?     */
+    public interface OnEnvironmentDataUpdateListener {
+        void onEnvironmentDataUpdate(Map<String, com.example.myapplication.api.model.Sensor> environmentData);
+    }
+    
+    /**
+     * 璁剧疆鍛婅娣诲姞鐩戝惉鍣?     * @param listener 鐩戝惉鍣ㄥ疄渚?     */
+    public void setOnAlarmAddedListener(OnAlarmAddedListener listener) {
+        this.onAlarmAddedListener = listener;
+    }
+    
+    /**
+     * 璁剧疆鐜鏁版嵁鏇存柊鐩戝惉鍣?     * @param listener 鐩戝惉鍣ㄥ疄渚?     */
+    public void setOnEnvironmentDataUpdateListener(OnEnvironmentDataUpdateListener listener) {
+        this.onEnvironmentDataUpdateListener = listener;
+    }
+    
+    /**
+     * 绉佹湁鏋勯€犲嚱鏁帮紝瀹炵幇鍗曚緥妯″紡
+     */
+    private AlarmHistoryManager(Context context) {
+        this.context = context.getApplicationContext(); // 浣跨敤搴旂敤涓婁笅鏂囷紝閬垮厤鍐呭瓨娉勬紡
+        this.alarmList = new ArrayList<>();
+        this.environmentDataMap = new ConcurrentHashMap<>(); // 绾跨▼瀹夊叏鐨勭幆澧冩暟鎹紦瀛?        this.gson = new GsonBuilder().setPrettyPrinting().create();
+        
+        // 鍒濆鍖栦繚瀛樼浉鍏崇殑Handler鍜孯unnable
+        saveHandler = new android.os.Handler();
+        
+        // 鍛婅鏁版嵁淇濆瓨浠诲姟
+        alarmSaveRunnable = new Runnable() {
+            @Override
+            public void run() {
+                isAlarmSavePending = false;
+                saveAlarmDataToFileInternal();
+            }
+        };
+        
+        // 鐜鏁版嵁淇濆瓨浠诲姟
+        environmentSaveRunnable = new Runnable() {
+            @Override
+            public void run() {
+                isEnvironmentSavePending = false;
+                saveEnvironmentDataToFileInternal();
+            }
+        };
+        
+        // 寮傛鍔犺浇鏁版嵁锛岄伩鍏嶉樆濉炰富绾跨▼
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                loadDataFromFile(); // 浠庢枃浠跺姞杞藉巻鍙叉暟鎹?                loadEnvironmentDataFromFile(); // 浠庢枃浠跺姞杞界幆澧冩暟鎹?            }
+        }).start();
+    }
+    
+    /**
+     * 鑾峰彇鍗曚緥瀹炰緥
+     */
+    public static synchronized AlarmHistoryManager getInstance(Context context) {
+        if (instance == null) {
+            instance = new AlarmHistoryManager(context);
+        }
+        return instance;
+    }
+    
+    /**
+     * 浠庢枃浠跺姞杞藉憡璀﹀巻鍙叉暟鎹?     */
+    private void loadDataFromFile() {
+        try {
+            // 鑾峰彇搴旂敤鐨勫唴閮ㄥ瓨鍌ㄧ洰褰?            java.io.File file = new java.io.File(context.getFilesDir(), ALARM_HISTORY_FILE);
+            
+            if (file.exists()) {
+                // 璇诲彇鏂囦欢鍐呭鍒板瓧绗︿覆
+                java.io.BufferedReader bufferedReader = new java.io.BufferedReader(new java.io.FileReader(file));
+                StringBuilder stringBuilder = new StringBuilder();
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    stringBuilder.append(line);
+                }
+                bufferedReader.close();
+                
+                String jsonData = stringBuilder.toString();
+                
+                // 浣跨敤Gson鐩存帴瑙ｆ瀽涓哄叿浣撶被鍨嬬殑鍒楄〃
+                com.example.myapplication.api.model.AlarmHistory[] alarmArray = gson.fromJson(jsonData, com.example.myapplication.api.model.AlarmHistory[].class);
+                
+                if (alarmArray != null && alarmArray.length > 0) {
+                        alarmList.clear();
+                        
+                        for (com.example.myapplication.api.model.AlarmHistory alarm : alarmArray) {
+                            // 杩囨护鎺夊寘鍚?=0"鐨勬甯哥姸鎬佽褰?                            if (alarm != null && alarm.getAlarmMsg() != null && !alarm.getAlarmMsg().contains("=0")) {
+                                alarmList.add(alarm);
+                            }
+                        }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "浠庢枃浠跺姞杞芥暟鎹け璐? " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 灏嗗憡璀﹀巻鍙叉暟鎹繚瀛樺埌鏂囦欢锛堝唴閮ㄦ柟娉曪紝鐩存帴鎵ц锛?     */
+    private void saveAlarmDataToFileInternal() {
+        try {
+            // 鑾峰彇搴旂敤鐨勫唴閮ㄥ瓨鍌ㄧ洰褰?            java.io.File file = new java.io.File(context.getFilesDir(), ALARM_HISTORY_FILE);
+            
+            // 鍒涘缓鏂囦欢锛堝鏋滀笉瀛樺湪锛?            file.createNewFile();
+            
+            // 灏嗘暟鎹簭鍒楀寲涓篔SON瀛楃涓?            com.example.myapplication.api.model.AlarmHistory[] alarmArray = alarmList.toArray(new com.example.myapplication.api.model.AlarmHistory[0]);
+            String jsonData = gson.toJson(alarmArray);
+            
+            // 鍐欏叆鏂囦欢
+            java.io.FileWriter writer = new java.io.FileWriter(file);
+            writer.write(jsonData);
+            writer.close();
+        } catch (Exception e) {
+            Log.e(TAG, "灏嗘暟鎹繚瀛樺埌鏂囦欢澶辫触: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 灏嗗憡璀﹀巻鍙叉暟鎹繚瀛樺埌鏂囦欢锛堝欢杩熸墽琛岋紝閬垮厤棰戠箒IO锛?     */
+    public void saveDataToFile() {
+        if (isAlarmSavePending) {
+            return; // 宸叉湁淇濆瓨浠诲姟鍦ㄧ瓑寰咃紝鏃犻渶閲嶅鎻愪氦
+        }
+        
+        isAlarmSavePending = true;
+        saveHandler.postDelayed(alarmSaveRunnable, SAVE_DELAY);
+    }
+    
+    /**
+     * 娣诲姞鏂扮殑鍛婅鍘嗗彶璁板綍
+     * @param newAlarmList 鏂扮殑鍛婅鍘嗗彶璁板綍鍒楄〃
+     */
+    public void addAlarmRecords(List<com.example.myapplication.api.model.AlarmHistory> newAlarmList) {
+        if (newAlarmList == null || newAlarmList.isEmpty()) {
+            return;
+        }
+        
+        // 鍒涘缓涓存椂闆嗗悎瀛樺偍鐜版湁璁板綍鐨処D锛岀敤浜庡幓閲?        java.util.Set<String> existingIds = new java.util.HashSet<>();
+        for (com.example.myapplication.api.model.AlarmHistory item : alarmList) {
+            existingIds.add(item.getAlarmId());
+        }
+        
+        // 缁熻娣诲姞鐨勬柊璁板綍鏁伴噺
+        int addedCount = 0;
+        List<com.example.myapplication.api.model.AlarmHistory> actuallyAddedAlarms = new ArrayList<>();
+        
+        // 灏嗘柊璁板綍娣诲姞鍒扮幇鏈夊垪琛ㄧ殑寮€澶?        for (int i = newAlarmList.size() - 1; i >= 0; i--) {
+            com.example.myapplication.api.model.AlarmHistory newItem = newAlarmList.get(i);
+            if (newItem != null && !existingIds.contains(newItem.getAlarmId())) {
+                // 璁板綍涓嶅瓨鍦紝娣诲姞鍒板垪琛ㄥ紑澶?                alarmList.add(0, newItem);
+                existingIds.add(newItem.getAlarmId());
+                addedCount++;
+                actuallyAddedAlarms.add(newItem);
+            }
+        }
+        
+        // 妫€鏌ュ苟闄愬埗鍒楄〃澶у皬锛岄伩鍏嶅唴瀛樺崰鐢ㄨ繃澶?        if (alarmList.size() > MAX_RECORDS) {
+            // 绉婚櫎瓒呭嚭閮ㄥ垎鐨勬棫璁板綍
+            int recordsToRemove = alarmList.size() - MAX_RECORDS;
+            for (int i = 0; i < recordsToRemove; i++) {
+                alarmList.remove(alarmList.size() - 1);
+            }
+        }
+        
+        // 灏嗘暟鎹繚瀛樺埌鏂囦欢
+        saveDataToFile();
+        
+        // 閫氱煡鐩戝惉鍣ㄦ湁鏂扮殑鍛婅璁板綍娣诲姞
+        if (onAlarmAddedListener != null && !actuallyAddedAlarms.isEmpty()) {
+            onAlarmAddedListener.onAlarmAdded(actuallyAddedAlarms);
+        }
+    }
+    
+    /**
+     * 鑾峰彇鎵€鏈夊憡璀﹀巻鍙茶褰?     * @return 鎵€鏈夊憡璀﹀巻鍙茶褰曞垪琛?     */
+    public List<com.example.myapplication.api.model.AlarmHistory> getAllAlarmRecords() {
+        return new ArrayList<>(alarmList);
+    }
+    
+    /**
+     * 鑾峰彇鏈€杩慛鏉″憡璀﹀巻鍙茶褰?     * @param count 瑕佽幏鍙栫殑璁板綍鏁伴噺
+     * @return 鏈€杩慛鏉″憡璀﹀巻鍙茶褰曞垪琛?     */
+    public List<com.example.myapplication.api.model.AlarmHistory> getRecentAlarmRecords(int count) {
+        // 鍒涘缓涓€涓柊鐨勫垪琛紝閬垮厤鐩存帴淇敼鍘熷鍒楄〃
+        List<com.example.myapplication.api.model.AlarmHistory> recentAlarms = new ArrayList<>(alarmList);
+        
+        // 鎸夋椂闂撮檷搴忔帓搴忥紝纭繚鏈€鏂扮殑璁板綍鎺掑湪鍓嶉潰
+        Collections.sort(recentAlarms, new Comparator<com.example.myapplication.api.model.AlarmHistory>() {
+            @Override
+            public int compare(com.example.myapplication.api.model.AlarmHistory o1, com.example.myapplication.api.model.AlarmHistory o2) {
+                // 鍋囪StartTime鏍煎紡涓簓yyy-MM-dd'T'HH:mm:ss.SSS锛岀洿鎺ユ瘮杈冨瓧绗︿覆鍗冲彲
+                return o2.getStartTime().compareTo(o1.getStartTime());
+            }
+        });
+        
+        // 杩斿洖鏈€杩慶ount鏉¤褰?        return recentAlarms.subList(0, Math.min(count, recentAlarms.size()));
+    }
+    
+    /**
+     * 娓呯┖鎵€鏈夊憡璀﹀巻鍙茶褰?     */
+    public void clearAllAlarmRecords() {
+        alarmList.clear();
+        saveDataToFile();
+        Log.d(TAG, "宸叉竻绌烘墍鏈夊憡璀﹀巻鍙茶褰?);
+    }
+    
+    /**
+     * 鑾峰彇褰撳墠鍛婅鍘嗗彶璁板綍鐨勬暟閲?     * @return 鍛婅鍘嗗彶璁板綍鐨勬暟閲?     */
+    public int getAlarmCount() {
+        return alarmList.size();
+    }
+    
+    /**
+     * 鍒犻櫎鎵€鏈夋ā鎷熷憡璀﹁褰曪紙ID浠?MOCK_"寮€澶寸殑璁板綍锛?     */
+    public void deleteAllMockRecords() {
+        Log.d(TAG, "=== 寮€濮嬪垹闄ゆ墍鏈夋ā鎷熷憡璀﹁褰?===");
+        Log.d(TAG, "鍒犻櫎鍓嶈褰曟暟閲? " + alarmList.size());
+        
+        // 绉婚櫎鎵€鏈塈D浠?MOCK_"寮€澶寸殑璁板綍
+        int initialSize = alarmList.size();
+        alarmList.removeIf(alarm -> alarm.getAlarmId() != null && alarm.getAlarmId().startsWith("MOCK_"));
+        
+        int deletedCount = initialSize - alarmList.size();
+        Log.d(TAG, "鍒犻櫎浜?" + deletedCount + " 鏉℃ā鎷熻褰?);
+        Log.d(TAG, "鍒犻櫎鍚庤褰曟暟閲? " + alarmList.size());
+        
+        // 淇濆瓨鍒版枃浠?        saveDataToFile();
+        Log.d(TAG, "=== 妯℃嫙鍛婅璁板綍鍒犻櫎瀹屾垚 ===");
+    }
+    
+    // -------------------------- 鐜鏁版嵁绠＄悊 --------------------------
+    
+    /**
+     * 浠庢枃浠跺姞杞界幆澧冩暟鎹?     */
+    private void loadEnvironmentDataFromFile() {
+        try {
+            // 鑾峰彇搴旂敤鐨勫唴閮ㄥ瓨鍌ㄧ洰褰?            java.io.File file = new java.io.File(context.getFilesDir(), ENVIRONMENT_DATA_FILE);
+            
+            if (file.exists()) {
+                // 璇诲彇鏂囦欢鍐呭鍒板瓧绗︿覆
+                java.io.BufferedReader bufferedReader = new java.io.BufferedReader(new java.io.FileReader(file));
+                StringBuilder stringBuilder = new StringBuilder();
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    stringBuilder.append(line);
+                }
+                bufferedReader.close();
+                
+                String jsonData = stringBuilder.toString();
+                
+                // 浣跨敤Gson鐩存帴瑙ｆ瀽涓哄叿浣撶被鍨嬬殑鏁扮粍
+                com.example.myapplication.api.model.Sensor[] sensors = gson.fromJson(jsonData, com.example.myapplication.api.model.Sensor[].class);
+                
+                if (sensors != null && sensors.length > 0) {
+                    environmentDataMap.clear();
+                    for (com.example.myapplication.api.model.Sensor sensor : sensors) {
+                        if (sensor != null) {
+                            // 浣跨敤璁惧ID+浼犳劅鍣ㄦ爣绛句綔涓哄敮涓€鏍囪瘑绗?                            String key = sensor.getDeviceId() + ":" + sensor.getApiTag();
+                            environmentDataMap.put(key, sensor);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "浠庢枃浠跺姞杞界幆澧冩暟鎹け璐? " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 灏嗙幆澧冩暟鎹繚瀛樺埌鏂囦欢锛堝唴閮ㄦ柟娉曪紝鐩存帴鎵ц锛?     */
+    private void saveEnvironmentDataToFileInternal() {
+        try {
+            // 鑾峰彇搴旂敤鐨勫唴閮ㄥ瓨鍌ㄧ洰褰?            java.io.File file = new java.io.File(context.getFilesDir(), ENVIRONMENT_DATA_FILE);
+            
+            // 鍒涘缓鏂囦欢锛堝鏋滀笉瀛樺湪锛?            file.createNewFile();
+            
+            // 灏嗘暟鎹簭鍒楀寲涓篔SON瀛楃涓?            com.example.myapplication.api.model.Sensor[] sensors = environmentDataMap.values().toArray(new com.example.myapplication.api.model.Sensor[0]);
+            String jsonData = gson.toJson(sensors);
+            
+            // 鍐欏叆鏂囦欢
+            java.io.FileWriter writer = new java.io.FileWriter(file);
+            writer.write(jsonData);
+            writer.close();
+        } catch (Exception e) {
+            Log.e(TAG, "灏嗙幆澧冩暟鎹繚瀛樺埌鏂囦欢澶辫触: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 灏嗙幆澧冩暟鎹繚瀛樺埌鏂囦欢锛堝欢杩熸墽琛岋紝閬垮厤棰戠箒IO锛?     */
+    private void saveEnvironmentDataToFile() {
+        if (isEnvironmentSavePending) {
+            return; // 宸叉湁淇濆瓨浠诲姟鍦ㄧ瓑寰咃紝鏃犻渶閲嶅鎻愪氦
+        }
+        
+        isEnvironmentSavePending = true;
+        saveHandler.postDelayed(environmentSaveRunnable, SAVE_DELAY);
+    }
+    
+    /**
+     * 鏇存柊鐜鏁版嵁
+     * @param sensors 浼犳劅鍣ㄦ暟鎹垪琛?     */
+    public void updateEnvironmentData(List<com.example.myapplication.api.model.Sensor> sensors) {
+        if (sensors == null || sensors.isEmpty()) {
+            return;
+        }
+        
+        boolean dataChanged = false;
+        
+        try {
+            for (com.example.myapplication.api.model.Sensor sensor : sensors) {
+                if (sensor != null) {
+                    try {
+                        // 纭繚璁惧ID鍜孉piTag涓嶄负绌?                        if (sensor.getApiTag() == null) {
+                            Log.w(TAG, "浼犳劅鍣ˋpiTag涓虹┖锛岃烦杩囪浼犳劅鍣?);
+                            continue;
+                        }
+                        
+                        String key = sensor.getDeviceId() + ":" + sensor.getApiTag();
+                        com.example.myapplication.api.model.Sensor oldSensor = environmentDataMap.get(key);
+                        
+                        // 鍙湁褰撴暟鎹湡姝ｅ彉鍖栨椂鎵嶆洿鏂?                        if (oldSensor == null || sensor.getValue() == null || oldSensor.getValue() == null || 
+                            !oldSensor.getValue().equals(sensor.getValue()) || 
+                            (sensor.getRecordTime() != null && oldSensor.getRecordTime() != null && 
+                             !oldSensor.getRecordTime().equals(sensor.getRecordTime()))) {
+                            environmentDataMap.put(key, sensor);
+                            dataChanged = true;
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "澶勭悊鍗曚釜浼犳劅鍣ㄦ暟鎹け璐? " + e.getMessage(), e);
+                        // 缁х画澶勭悊涓嬩竴涓紶鎰熷櫒锛屼笉涓柇鏁翠釜鏇存柊娴佺▼
+                    }
+                }
+            }
+            
+            // 濡傛灉鏁版嵁鍙戠敓鍙樺寲锛屼繚瀛樺埌鏂囦欢骞堕€氱煡鐩戝惉鍣?            if (dataChanged) {
+                saveEnvironmentDataToFile();
+                
+                // 閫氱煡鐩戝惉鍣ㄧ幆澧冩暟鎹凡鏇存柊
+                if (onEnvironmentDataUpdateListener != null) {
+                    try {
+                        onEnvironmentDataUpdateListener.onEnvironmentDataUpdate(environmentDataMap);
+                    } catch (Exception e) {
+                        Log.e(TAG, "閫氱煡鐜鏁版嵁鏇存柊鐩戝惉鍣ㄥけ璐? " + e.getMessage(), e);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "鏇存柊鐜鏁版嵁澶辫触: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 鑾峰彇鎵€鏈夌幆澧冩暟鎹?     * @return 鐜鏁版嵁鏄犲皠琛?     */
+    public Map<String, com.example.myapplication.api.model.Sensor> getAllEnvironmentData() {
+        return new ConcurrentHashMap<>(environmentDataMap);
+    }
+    
+    /**
+     * 鏍规嵁璁惧ID鍜屼紶鎰熷櫒鏍囩鑾峰彇鐜鏁版嵁
+     * @param deviceId 璁惧ID
+     * @param apiTag 浼犳劅鍣ㄦ爣绛?     * @return 浼犳劅鍣ㄦ暟鎹紝鎵句笉鍒拌繑鍥瀗ull
+     */
+    public com.example.myapplication.api.model.Sensor getEnvironmentData(long deviceId, String apiTag) {
+        String key = deviceId + ":" + apiTag;
+        return environmentDataMap.get(key);
+    }
+    
+    /**
+     * 鏁版嵁涓€鑷存€ф牎楠?     * 妫€鏌ョ幆澧冩暟鎹笌鍛婅鏁版嵁鏄惁涓€鑷?     * @return 涓€鑷存€ф鏌ョ粨鏋?     */
+    public boolean checkDataConsistency() {
+        // 绠€鍗曠殑涓€鑷存€ф鏌ワ細纭繚鎵€鏈夊憡璀︽暟鎹腑鐨勮澶嘔D鍦ㄧ幆澧冩暟鎹腑瀛樺湪
+        boolean isConsistent = true;
+        
+        for (com.example.myapplication.api.model.AlarmHistory alarm : alarmList) {
+            long deviceId = alarm.getDeviceId();
+            boolean deviceFound = false;
+            
+            // 妫€鏌ョ幆澧冩暟鎹腑鏄惁瀛樺湪璇ヨ澶囩殑浠讳綍浼犳劅鍣ㄦ暟鎹?            for (String key : environmentDataMap.keySet()) {
+                if (key.startsWith(deviceId + ":")) {
+                    deviceFound = true;
+                    break;
+                }
+            }
+            
+            if (!deviceFound) {
+                Log.w(TAG, "鏁版嵁涓嶄竴鑷达細鍛婅璁板綍涓殑璁惧ID " + deviceId + " 鍦ㄧ幆澧冩暟鎹腑涓嶅瓨鍦?);
+                isConsistent = false;
+            }
+        }
+        
+        return isConsistent;
+    }
+    
+    /**
+     * 娓呯┖鎵€鏈夌幆澧冩暟鎹?     */
+    public void clearAllEnvironmentData() {
+        environmentDataMap.clear();
+        saveEnvironmentDataToFile();
+        Log.d(TAG, "宸叉竻绌烘墍鏈夌幆澧冩暟鎹?);
+    }
+    
+    /**
+     * 鑾峰彇褰撳墠鐜鏁版嵁鐨勬暟閲?     * @return 鐜鏁版嵁鐨勬暟閲?     */
+    public int getEnvironmentDataCount() {
+        return environmentDataMap.size();
+    }
+    
+}

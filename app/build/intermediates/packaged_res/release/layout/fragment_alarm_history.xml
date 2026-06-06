@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingTop="4dp"
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp"
+    android:paddingBottom="22dp">
+
+    <!-- 顶部控制栏：手动刷新、暂停/恢复按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp"
+        android:background="@android:color/darker_gray">
+        
+        <!-- 加载状态指示器 -->
+        <ProgressBar
+            android:id="@+id/pb_loading"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:indeterminate="true"
+            android:visibility="gone"
+            android:layout_marginRight="12dp" />
+        
+        <!-- 状态提示文本 -->
+        <TextView
+            android:id="@+id/tv_refresh_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="自动刷新中"
+            android:textSize="14sp"
+            android:textColor="@android:color/white" />
+        
+        <!-- 手动刷新按钮 -->
+        <Button
+            android:id="@+id/btn_manual_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="手动刷新"
+            android:background="@android:drawable/btn_default_small"
+            android:layout_marginRight="8dp" />
+        
+        <!-- 删除当前页按钮 -->
+        <Button
+            android:id="@+id/btn_delete_current_page"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="删除当前页"
+            android:background="@android:drawable/btn_default_small"
+            android:layout_marginRight="8dp" />
+        
+        <!-- 暂停/恢复按钮 -->
+        <Button
+            android:id="@+id/btn_toggle_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="暂停刷新"
+            android:background="@android:drawable/btn_default_small" />
+    </LinearLayout>
+
+    <!-- 告警列表表格容器 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@android:drawable/dialog_holo_light_frame"
+        android:padding="2dp"
+        android:orientation="vertical">
+        
+        <!-- 横向滚动容器，解决窄屏显示问题 -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+            
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                
+                <!-- 表格标题行，单独分离出来实现置顶效果 -->
+                <TableLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:stretchColumns="*">
+                    <TableRow
+                        android:background="@android:color/holo_blue_dark"
+                        android:padding="8dp"
+                        android:minHeight="65dp">
+                        <TextView
+                            android:text="序号"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:textColor="@android:color/white"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="-0.05" />
+                        <TextView
+                            android:text="时间"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:textColor="@android:color/white"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="-0.05" />
+                        <TextView
+                            android:text="类型"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:textColor="@android:color/white"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="-0.05" />
+                        <TextView
+                            android:text="关联设备"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:padding="8dp"
+                            android:textColor="@android:color/white"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="-0.05" />
+                    </TableRow>
+                </TableLayout>
+                
+                <!-- 数据行容器 -->
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:fillViewport="true">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <TableLayout
+                            android:id="@+id/tl_alarm_list"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:stretchColumns="*" >
+                            <!-- 表格数据行将通过代码动态添加 -->
+                        </TableLayout>
+                    </LinearLayout>
+                </ScrollView>
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <!-- 分页控件 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="12dp">
+        
+        <Button
+            android:id="@+id/btn_previous"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="上一页"
+            android:background="@android:drawable/btn_default_small"
+            android:layout_marginRight="16dp" />
+        
+        <TextView
+            android:id="@+id/tv_current_page"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1/1"
+            android:textSize="16sp"
+            android:layout_marginRight="16dp" />
+        
+        <Button
+            android:id="@+id/btn_next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="下一页"
+            android:background="@android:drawable/btn_default_small" />
+    </LinearLayout>
+
+</LinearLayout>

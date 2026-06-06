@@ -1,0 +1,238 @@
+[
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_rounded_corner_background.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/rounded_corner_background.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_ic_arrow_forward.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/ic_arrow_forward.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/menu_main_menu.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/menu/main_menu.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_home.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_home.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_item_device_bg.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/item_device_bg.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_alert_item_background.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/alert_item_background.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_layout2.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/layout2.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_network_config.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_network_config.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_bg.png.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/bg.png"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/xml_network_security_config.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-hdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_linkage_rules.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_linkage_rules.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_alarm_history.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_alarm_history.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_actuator_management.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_actuator_management.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-xxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/menu_nav_menu.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/menu/nav_menu.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_ic_launcher_background.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_peach_pic.png.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/peach_pic.png"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-xxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_item_device_control.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/item_device_control.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/xml_backup_rules.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-mdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_tree.png.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/tree.png"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_item_sensor_data.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/item_sensor_data.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_ic_error.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/ic_error.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_report.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_report.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_btn_peach.png.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/btn_peach.png"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_activity_reset_password_success.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/activity_reset_password_success.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-xhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_item_device_data.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/item_device_data.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_alarm_item_background.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/alarm_item_background.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-xxxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_activity_forgot_password.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/activity_forgot_password.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_activity_login.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/activity_login.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_gradient_humidity_background.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/gradient_humidity_background.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_alarm_item_with_shadow.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/alarm_item_with_shadow.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_item_device.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/item_device.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-xxxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_realtime_monitoring.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_realtime_monitoring.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_nav_header.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/nav_header.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_threshold_settings.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_threshold_settings.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_tree_bg.png.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/tree_bg.png"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-hdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_gradient_temperature_background.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/gradient_temperature_background.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_sensor_management.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_sensor_management.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_layout1.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/layout1.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_item_sensor_card.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/item_sensor_card.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_ic_check_circle.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/ic_check_circle.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_activity_register.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/activity_register.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_activity_main.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/activity_main.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/xml_data_extraction_rules.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-xhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_monkey.png.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/monkey.png"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "cn.itcast.calculator.app-main-39:/mipmap-mdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_system_settings.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_system_settings.xml"
+    },
+    {
+        "merged": "cn.itcast.calculator.app-merged_res-37:/layout_fragment_device_control.xml.flat",
+        "source": "cn.itcast.calculator.app-main-39:/layout/fragment_device_control.xml"
+    }
+]
